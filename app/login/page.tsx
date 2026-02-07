@@ -18,14 +18,32 @@ export default function LoginPage() {
         setLoading(true)
         setError(null)
 
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        try {
+            console.log('Attempting login...')
+            const start = performance.now()
 
-        if (error) {
-            setError(error.message)
+            // Add a timeout to prevent infinite hanging
+            const loginPromise = supabase.auth.signInWithPassword({ email, password })
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Login request timed out. Please check your network.')), 15000)
+            )
+
+            const { data, error } = await Promise.race([loginPromise, timeoutPromise]) as any
+
+            console.log('Login result:', { success: !error, error, time: performance.now() - start })
+
+            if (error) {
+                setError(error.message)
+                setLoading(false)
+            } else {
+                console.log('Login successful, redirecting...')
+                // Force a hard navigation to ensure all auth state is fresh
+                window.location.href = '/dashboard'
+            }
+        } catch (err: any) {
+            console.error('Login exception:', err)
+            setError(err.message || 'An unexpected error occurred')
             setLoading(false)
-        } else {
-            router.push('/dashboard')
-            router.refresh()
         }
     }
 

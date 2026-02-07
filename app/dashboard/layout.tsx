@@ -18,8 +18,8 @@ export default async function DashboardLayout({
         <div className="min-h-screen bg-secondary/30 dark:bg-background">
             <DashboardNav userEmail={user.email || ''} />
 
-            {/* Content Area - Offset for sidebar on desktop, header/footer on mobile */}
-            <main className="md:pl-64 pt-16 md:pt-0 pb-20 md:pb-8 min-h-screen transition-all">
+            {/* Content Area - Padding is handled by global styles injected by DashboardNav for dynamic collapse */}
+            <main className="pt-16 md:pt-0 pb-20 md:pb-8 min-h-screen transition-all duration-300 ease-in-out">
                 <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                     {children}
                 </div>

@@ -85,11 +85,12 @@
   --popover-foreground: #0f172a;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
+  --secondary: #f8fafc;
+  /* Lighter secondary in light mode */
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #f1f5f9;
+  --accent: #f8fafc;
   --accent-foreground: #0f172a;
   --destructive: #ef4444;
   --destructive-foreground: #fafafa;
@@ -116,8 +117,10 @@
   --accent-foreground: #f8fafc;
   --destructive: #7f1d1d;
   --destructive-foreground: #f8fafc;
-  --border: #1e293b;
-  --input: #1e293b;
+  --border: #334155;
+  /* Higher contrast border */
+  --input: #334155;
+  /* Higher contrast input border */
   --ring: #3b82f6;
 }
 
@@ -172,4 +175,21 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px var(--card) inset !important;
   -webkit-text-fill-color: var(--foreground) !important;
   transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Force higher contrast on inputs in dark mode */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1e293b !important;
+  /* Force distinct background */
+  border-color: #475569 !important;
+  /* Force visible border */
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8 !important;
+  /* Brighter placeholder */
 }
