@@ -17,9 +17,16 @@ export default function JobsPage() {
     }, [])
 
     const fetchJobs = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            setLoading(false)
+            return
+        }
+
         const { data, error } = await supabase
             .from('jobs')
             .select('*')
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false })
 
         if (!error && data) setJobs(data)
@@ -29,10 +36,13 @@ export default function JobsPage() {
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this application?')) return
 
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
         // Optimistic update
         setJobs(jobs.filter(j => j.id !== id))
 
-        const { error } = await supabase.from('jobs').delete().eq('id', id)
+        const { error } = await supabase.from('jobs').delete().eq('id', id).eq('user_id', user.id)
         if (error) fetchJobs() // Revert on error
     }
 
@@ -111,13 +121,16 @@ export default function JobsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {jobs.map((job) => (
+                                {jobs.map((job) => {
+                                    const score = job.probability_score ?? 0
+
+                                    return (
                                     <tr key={job.id} className="group hover:bg-secondary/30 transition-colors">
                                         <td className="px-6 py-4 font-medium">
                                             <div className="flex items-center gap-2">
                                                 {job.company}
-                                                {job.job_url && (
-                                                    <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-blue-600 transition-colors">
+                                                {job.link && (
+                                                    <a href={job.link} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-blue-600 transition-colors">
                                                         <ExternalLink className="w-3 h-3" />
                                                     </a>
                                                 )}
@@ -133,11 +146,11 @@ export default function JobsPage() {
                                             <div className="flex items-center gap-2">
                                                 <div className="flex-1 w-20 h-1.5 bg-secondary rounded-full overflow-hidden">
                                                     <div
-                                                        className={`h-full rounded-full ${job.chance_score >= 8 ? 'bg-emerald-500' : job.chance_score >= 5 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                                        style={{ width: `${job.chance_score * 10}%` }}
+                                                        className={`h-full rounded-full ${score >= 8 ? 'bg-emerald-500' : score >= 5 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                                        style={{ width: `${score * 10}%` }}
                                                     />
                                                 </div>
-                                                <span className="text-xs text-muted-foreground">{job.chance_score}/10</span>
+                                                <span className="text-xs text-muted-foreground">{score}/10</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -157,7 +170,8 @@ export default function JobsPage() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    )
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -184,10 +198,10 @@ function JobForm({ job, onSuccess, onCancel }: { job: Job | null; onSuccess: () 
     const [formData, setFormData] = useState({
         company: job?.company || '',
         role: job?.role || '',
-        job_url: job?.job_url || '',
+        link: job?.link || '',
         resume_version: job?.resume_version || '',
         status: job?.status || 'Applied',
-        chance_score: job?.chance_score || 5,
+        probability_score: job?.probability_score || 5,
     })
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -199,12 +213,16 @@ function JobForm({ job, onSuccess, onCancel }: { job: Job | null; onSuccess: () 
         setError(null)
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+            setError('You must be signed in to save this.')
+            setLoading(false)
+            return
+        }
 
         const payload = { ...formData, user_id: user.id }
 
         const { error } = job
-            ? await supabase.from('jobs').update(payload).eq('id', job.id)
+            ? await supabase.from('jobs').update(payload).eq('id', job.id).eq('user_id', user.id)
             : await supabase.from('jobs').insert([payload])
 
         if (error) {
@@ -254,8 +272,8 @@ function JobForm({ job, onSuccess, onCancel }: { job: Job | null; onSuccess: () 
                     <label className="text-sm font-medium">Job URL</label>
                     <input
                         type="url"
-                        value={formData.job_url}
-                        onChange={(e) => setFormData({ ...formData, job_url: e.target.value })}
+                        value={formData.link}
+                        onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                         className="w-full px-3 py-2 bg-secondary/50 border border-border rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                         placeholder="https://..."
                     />
@@ -276,13 +294,13 @@ function JobForm({ job, onSuccess, onCancel }: { job: Job | null; onSuccess: () 
                         </select>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-sm font-medium">Confidence Score: {formData.chance_score}</label>
+                        <label className="text-sm font-medium">Confidence Score: {formData.probability_score}</label>
                         <input
                             type="range"
                             min="1"
                             max="10"
-                            value={formData.chance_score}
-                            onChange={(e) => setFormData({ ...formData, chance_score: parseInt(e.target.value) })}
+                            value={formData.probability_score}
+                            onChange={(e) => setFormData({ ...formData, probability_score: parseInt(e.target.value) })}
                             className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
                     </div>

@@ -17,9 +17,16 @@ export default function LinkedInPage() {
     }, [])
 
     const fetchContacts = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            setLoading(false)
+            return
+        }
+
         const { data, error } = await supabase
             .from('networking_linkedin')
             .select('*')
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false })
 
         if (!error && data) setContacts(data)
@@ -28,8 +35,12 @@ export default function LinkedInPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this contact?')) return
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
         setContacts(contacts.filter(c => c.id !== id))
-        const { error } = await supabase.from('networking_linkedin').delete().eq('id', id)
+        const { error } = await supabase.from('networking_linkedin').delete().eq('id', id).eq('user_id', user.id)
         if (error) fetchContacts()
     }
 
@@ -150,12 +161,16 @@ function ContactForm({ contact, onSuccess, onCancel }: { contact: LinkedInContac
         setError(null)
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+            setError('You must be signed in to save this.')
+            setLoading(false)
+            return
+        }
 
         const payload = { ...formData, user_id: user.id }
 
         const { error } = contact
-            ? await supabase.from('networking_linkedin').update(payload).eq('id', contact.id)
+            ? await supabase.from('networking_linkedin').update(payload).eq('id', contact.id).eq('user_id', user.id)
             : await supabase.from('networking_linkedin').insert([payload])
 
         if (error) {

@@ -4,6 +4,11 @@ import { Briefcase, Mail, Linkedin, TrendingUp, Plus, ArrowRight } from 'lucide-
 
 export default async function DashboardPage() {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return null
+    }
 
     const [
         { count: jobsCount },
@@ -11,10 +16,10 @@ export default async function DashboardPage() {
         { count: emailsCount },
         { data: jobs }
     ] = await Promise.all([
-        supabase.from('jobs').select('*', { count: 'exact', head: true }),
-        supabase.from('networking_linkedin').select('*', { count: 'exact', head: true }),
-        supabase.from('networking_email').select('*', { count: 'exact', head: true }),
-        supabase.from('jobs').select('status')
+        supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('networking_linkedin').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('networking_email').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('jobs').select('status').eq('user_id', user.id)
     ])
 
     const repliedJobs = jobs?.filter(j => j.status === 'Interview' || j.status === 'Offer').length || 0
